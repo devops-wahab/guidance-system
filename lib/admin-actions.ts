@@ -278,7 +278,10 @@ export async function updateCourse(id: string, data: UpdateCourseData) {
   await verifyAdmin();
 
   try {
-    await adminDb.collection("courses").doc(id).update(data);
+    await adminDb
+      .collection("courses")
+      .doc(id)
+      .update(data as any);
     return { success: true };
   } catch (error: any) {
     console.error("Error updating course:", error);
