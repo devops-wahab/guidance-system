@@ -60,7 +60,6 @@ export function CreateUserDialog({
         email: formData.email,
         role: formData.role,
         createdAt: new Date(),
-        ...formData, // Include all optional fields
       };
       onUserCreated(newUser);
       setFormData({ name: "", email: "", password: "", role: "student" });
