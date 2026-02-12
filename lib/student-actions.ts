@@ -5,6 +5,7 @@ import { adminAuth, adminDb } from "./firebase-admin";
 import { ActionState } from "./definations";
 import { mapZodErrors } from "./utils";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { registerSchema } from "./auth-schemas";
 import { getCurrentUser } from "./auth-actions";
 import { User } from "./types/admin";
@@ -135,10 +136,114 @@ export async function getEnrolledCourses() {
       }
     }
 
+    // ... existing code ...
     return courseDetails;
   } catch (error) {
     console.error("Error fetching enrolled courses:", error);
     return [];
+  }
+}
+
+export async function getAvailableCourses() {
+  const user = await getCurrentUser();
+  if (!user?.uid) return [];
+
+  try {
+    const coursesSnapshot = await adminDb.collection("courses").get();
+
+    if (coursesSnapshot.empty) {
+      // Return mock data if no courses found in DB
+      return [
+        {
+          id: "1",
+          code: "CSC 201",
+          name: "Data Structures",
+          credits: 3,
+          semester: "First",
+          level: "200",
+        },
+        {
+          id: "2",
+          code: "CSC 202",
+          name: "discrete Structure",
+          credits: 3,
+          semester: "First",
+          level: "200",
+        },
+        {
+          id: "3",
+          code: "MTH 201",
+          name: "Mathematical Methods I",
+          credits: 3,
+          semester: "First",
+          level: "200",
+        },
+        {
+          id: "4",
+          code: "GNS 201",
+          name: "Philosophy and Logic",
+          credits: 2,
+          semester: "First",
+          level: "200",
+        },
+        {
+          id: "5",
+          code: "ENT 201",
+          name: "Entrepreneurship Studies I",
+          credits: 2,
+          semester: "First",
+          level: "200",
+        },
+      ];
+    }
+
+    return coursesSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as EnrolledCourse[];
+  } catch (error) {
+    console.error("Error fetching available courses:", error);
+    return [];
+  }
+}
+
+export async function registerCourses(courseIds: string[]) {
+  const user = await getCurrentUser();
+  if (!user?.uid) throw new Error("Unauthorized");
+
+  try {
+    // Check if student already has an enrollment record
+    const enrollmentQuery = await adminDb
+      .collection("enrollments")
+      .where("studentId", "==", user.uid)
+      .limit(1)
+      .get();
+
+    if (!enrollmentQuery.empty) {
+      // Update existing enrollment
+      const enrollmentId = enrollmentQuery.docs[0].id;
+      await adminDb.collection("enrollments").doc(enrollmentId).update({
+        courses: courseIds,
+        updatedAt: Timestamp.now(),
+      });
+    } else {
+      // Create new enrollment
+      await adminDb.collection("enrollments").add({
+        studentId: user.uid,
+        courses: courseIds,
+        semester: "First", // Defaulting to first for now
+        session: "2025/2026",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+    }
+
+    revalidatePath("/student");
+    revalidatePath("/student/registration");
+    return { success: true };
+  } catch (error) {
+    console.error("Error registering courses:", error);
+    return { error: "Failed to register courses" };
   }
 }
 
