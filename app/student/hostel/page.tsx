@@ -12,7 +12,8 @@ import { Home, CheckCircle2 } from "lucide-react";
 
 export default function HostelApplicationPage() {
   // Mock application status
-  const applicationStatus = "not_applied"; // Change to 'submitted' or 'approved' to test UI
+  const applicationStatus: "not_applied" | "submitted" | "approved" =
+    "not_applied"; // Change to 'submitted' or 'approved' to test UI
 
   if (applicationStatus === "submitted") {
     return (
