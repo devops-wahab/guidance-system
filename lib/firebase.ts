@@ -21,7 +21,7 @@ if (typeof window !== "undefined") {
   import("firebase/auth").then(
     ({ setPersistence, browserSessionPersistence }) => {
       setPersistence(auth, browserSessionPersistence);
-    }
+    },
   );
 }
 
