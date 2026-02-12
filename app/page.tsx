@@ -39,14 +39,9 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/register">
-              <Button size="lg" className="w-full sm:w-auto">
-                Get Started
-              </Button>
-            </Link>
             <Link href="/login">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Sign In
+              <Button size="lg" className="w-full sm:w-auto cursor-pointer">
+                Login
               </Button>
             </Link>
           </div>
