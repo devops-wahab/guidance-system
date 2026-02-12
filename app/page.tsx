@@ -79,7 +79,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t py-6">
         <div className="container px-4 text-center text-sm text-muted-foreground">
-          © 2026 Guidance System. All rights reserved.
+          © {new Date().getFullYear()} Guidance System. All rights reserved.
         </div>
       </footer>
     </div>
