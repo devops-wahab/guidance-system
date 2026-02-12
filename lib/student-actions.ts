@@ -266,12 +266,28 @@ export async function getAcademicHistory() {
   // Mock data generator based on GPA
   const generateGrades = (level: string, session: string, semester: string) => {
     const isHighPerformer = currentGPA > 3.0;
-    const courses = [
-      { code: "CSC 101", title: "Intro to CS", unit: 3 },
-      { code: "MTH 101", title: "General Math I", unit: 4 },
-      { code: "PHY 101", title: "General Physics I", unit: 4 },
-      { code: "GNS 101", title: "Use of English", unit: 2 },
+
+    // Computer Science 100 Level courses
+    const firstSemesterCourses = [
+      { code: "CSC 101", title: "Introduction to Computer Science", unit: 3 },
+      { code: "MTH 101", title: "Elementary Mathematics I", unit: 3 },
+      { code: "PHY 101", title: "General Physics I", unit: 3 },
+      { code: "CHM 101", title: "General Chemistry I", unit: 3 },
+      { code: "GNS 101", title: "Use of English I", unit: 2 },
+      { code: "GNS 103", title: "Citizenship Education", unit: 2 },
     ];
+
+    const secondSemesterCourses = [
+      { code: "CSC 102", title: "Introduction to Problem Solving", unit: 3 },
+      { code: "MTH 102", title: "Elementary Mathematics II", unit: 3 },
+      { code: "PHY 102", title: "General Physics II", unit: 3 },
+      { code: "CHM 102", title: "General Chemistry II", unit: 3 },
+      { code: "GNS 102", title: "Use of English II", unit: 2 },
+      { code: "BIO 101", title: "General Biology", unit: 2 },
+    ];
+
+    const courses =
+      semester === "First" ? firstSemesterCourses : secondSemesterCourses;
 
     return {
       semester,
@@ -287,13 +303,12 @@ export async function getAcademicHistory() {
     };
   };
 
-  // Return history based on level
+  // Return history - all students have records from 2024/2025 session (last completed session)
   const history: AcademicRecord[] = [];
 
-  if (profile.level === "200 Level" || profile.level === "300 Level") {
-    history.push(generateGrades("100 Level", "2023/2024", "First"));
-    history.push(generateGrades("100 Level", "2023/2024", "Second"));
-  }
+  // All students have completed the 2024/2025 academic session
+  history.push(generateGrades("100 Level", "2024/2025", "First"));
+  history.push(generateGrades("100 Level", "2024/2025", "Second"));
 
   return history;
 }
