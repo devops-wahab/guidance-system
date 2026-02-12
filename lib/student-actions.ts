@@ -197,10 +197,18 @@ export async function getAvailableCourses() {
       ];
     }
 
-    return coursesSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as EnrolledCourse[];
+    return coursesSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        code: data.code,
+        name: data.name,
+        credits: data.credits,
+        semester: data.semester,
+        level: data.level,
+        status: "registered", // Default for available courses listing, though not strictly enrolled yet
+      } as EnrolledCourse;
+    });
   } catch (error) {
     console.error("Error fetching available courses:", error);
     return [];
