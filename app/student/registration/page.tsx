@@ -13,11 +13,10 @@ export default async function CourseRegistrationPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <h3 className="text-3xl font-bold">Course Registration</h3>
-        <p className="text-sm text-foreground/70">
+        <p className="text-sm text-muted-foreground">
           Register new courses for the upcoming semester.
         </p>
       </div>
-      <Separator />
 
       <Suspense fallback={<div>Loading courses...</div>}>
         <CourseRegistrationForm

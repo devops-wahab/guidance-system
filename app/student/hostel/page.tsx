@@ -137,10 +137,10 @@ export default async function HostelApplicationPage() {
   }
 
   return (
-    <div className="space-y-8 container mx-auto py-10">
+    <div className="space-y-8 container mx-auto">
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-black tracking-tight">Hostel Booking</h1>
-        <p className="text-muted-foreground text-lg">
+        <h1 className="text-3xl font-bold">Hostel Booking</h1>
+        <p className="text-sm text-muted-foreground">
           Browse available rooms and book instantly for the {currentSessionName}{" "}
           session.
         </p>

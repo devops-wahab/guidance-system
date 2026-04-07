@@ -13,7 +13,7 @@ import {
   AlertTriangleIcon,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import Link from "next/link";
+import { EnrolledCoursesList } from "@/components/student/EnrolledCoursesList";
 
 export default async function StudentDashboard() {
   const profile = await getStudentProfile();
@@ -27,7 +27,7 @@ export default async function StudentDashboard() {
       {/* Welcome Section */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">Welcome, {profile.name}</h1>
-        <p className="text-foreground/70 text-sm">
+        <p className="text-muted-foreground text-sm">
           {profile.level} • {profile.major} •{" "}
           {profile.matricNumber || "No Matric No"}
         </p>
@@ -35,29 +35,62 @@ export default async function StudentDashboard() {
 
       {/* Critical Alert: Summoned Status */}
       {isSummoned && (
-        <Alert className=" border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
-          <AlertTriangleIcon />
-          <AlertTitle className="text-lg font-semibold">
-            Action Required: See Your Advisor
+        <Alert className="border-l-4 border-l-amber-500 bg-amber-50/50 text-amber-900 dark:border-l-amber-600 dark:bg-amber-950/20 dark:text-amber-50">
+          <AlertTitle className="text-xl font-bold flex items-center gap-3">
+            <div className="p-2 rounded-full bg-white shadow-sm">
+              <AlertTriangleIcon className="h-5 w-5 text-amber-600" />
+            </div>
+            See Your Advisor
+            <Badge className="bg-amber-500 text-white hover:bg-amber-500 animate-pulse border-transparent">
+              URGENT
+            </Badge>
           </AlertTitle>
-          <AlertDescription className="mt-2">
-            <p className="mb-4 text-foreground/70">
+          <AlertDescription className="mt-4">
+            <p className="text-amber-900/80 dark:text-amber-50/80 text-base mb-6">
               Your advisor has flagged your profile for academic guidance.
-              Please visit their office immediately.
+              Please visit their office immediately. Prioritize visiting their
+              office during the hours listed below.
             </p>
 
-            <div className="flex flex-col w-full sm:flex-row gap-4 text-sm p-4 bg-background/50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span>Advisor Office</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-background/6 dark:border-amber-900/50 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                  <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 font-semibold">
+                    Location
+                  </span>
+                  <span className="text-sm font-medium">
+                    Computer Science Dept.
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>Computer Science Department, Block D, Room 205</span>
+
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                  <MapPin className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 font-semibold">
+                    Room
+                  </span>
+                  <span className="text-sm font-medium">Block D, Room 205</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>Mon-Fri 10am - 12pm</span>
+
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 font-semibold">
+                    Office Hours
+                  </span>
+                  <span className="text-sm font-medium">
+                    Mon-Fri: 10am - 12pm
+                  </span>
+                </div>
               </div>
             </div>
           </AlertDescription>
@@ -79,7 +112,7 @@ export default async function StudentDashboard() {
                 profile.guidanceStatus === "seen"
                   ? "text-blue-600"
                   : profile.guidanceStatus === "summoned"
-                    ? "text-destructive"
+                    ? "text-amber-600"
                     : (profile.gpa ?? 0) > 2.0
                       ? "text-green-600"
                       : "text-red-600"
@@ -153,91 +186,7 @@ export default async function StudentDashboard() {
       </div>
 
       {/* Enrolled Courses List */}
-      <div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Semester Courses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {enrolledCourses.length > 0 ? (
-              <div className="space-y-4">
-                {enrolledCourses.map((course) => (
-                  <div
-                    key={course.id}
-                    className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex gap-4 items-center">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs">
-                        {course.code.split(" ")[0]}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">{course.code}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {course.name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="secondary">{course.credits} Units</Badge>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {course.level}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center text-center py-8 text-muted-foreground">
-                No courses registered for this semester yet.
-                <Button className="mt-4">
-                  <Link href="/student/registration">Register Courses</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions / Sidebar */}
-        {/* <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Academic Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Guidance Status</span>
-                {profile.guidanceStatus === "good_standing" ? (
-                  <Badge className="bg-green-600 hover:bg-green-600 text-white border-transparent">
-                    Good Standing
-                  </Badge>
-                ) : profile.guidanceStatus === "summoned" ? (
-                  <Badge className="bg-amber-500 hover:bg-amber-500 text-white border-transparent">
-                    Summoned
-                  </Badge>
-                ) : profile.guidanceStatus === "seen" ||
-                  profile.guidanceStatus === "completed" ? (
-                  <Badge className="bg-blue-600 hover:bg-blue-600 text-white border-transparent">
-                    Guidance Completed
-                  </Badge>
-                ) : (
-                  <Badge className="bg-red-600 hover:bg-red-600 text-white border-transparent">
-                    Needs Guidance
-                  </Badge>
-                )}
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">CGPA</span>
-                <span className="font-bold">{profile.gpa?.toFixed(2)}</span>
-              </div>
-              <div className="pt-4">
-                <Button className="w-full" variant="outline" asChild>
-                  <a href="/student/transcript">View Full Transcript</a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div> */}
-      </div>
+      <EnrolledCoursesList courses={enrolledCourses} />
     </div>
   );
 }
