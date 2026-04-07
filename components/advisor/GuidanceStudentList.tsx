@@ -7,7 +7,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Megaphone, CheckCircle, Clock, User as UserIcon, Phone, Mail, GraduationCap } from "lucide-react";
+import {
+  Megaphone,
+  CheckCircle,
+  Clock,
+  User as UserIcon,
+  Phone,
+  Mail,
+  GraduationCap,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -71,27 +79,51 @@ export function GuidanceStudentList({
   const activeStudents = students.filter((s) => s.guidanceStatus !== "seen");
   const seenStudents = students.filter((s) => s.guidanceStatus === "seen");
 
-  const StudentCard = ({ student, isSeen = false }: { student: User, isSeen?: boolean }) => (
-    <Card className={`group overflow-hidden transition-all hover:ring-2 hover:ring-indigo-500/20 ${isSeen ? 'bg-muted/30 opacity-80' : 'bg-card'}`}>
+  const StudentCard = ({
+    student,
+    isSeen = false,
+  }: {
+    student: User;
+    isSeen?: boolean;
+  }) => (
+    <Card
+      className={`group overflow-hidden transition-all hover:ring-2 hover:ring-indigo-500/20 ${isSeen ? "bg-muted/30 opacity-80" : "bg-card"}`}
+    >
       <CardContent className="p-0">
-        <div className="p-5 flex items-start gap-4">
-          <Avatar className="h-12 w-12 border-2 border-indigo-100 dark:border-indigo-900">
+        {student.guidanceStatus === "summoned" && !isSeen && (
+          <div className="px-4 py-1 pb-5">
+            <div className="rounded px-3 py-2 bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              <Clock className="h-3 w-3 animate-pulse" />
+              Awaiting Student Visit
+            </div>
+          </div>
+        )}
+        <div className="py-6 pt-1 px-4 flex items-start gap-4">
+          {/* <Avatar className="h-12 w-12 border-2 border-indigo-100 dark:border-indigo-900">
             <AvatarFallback className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold">
               {student.name?.split(' ').map(n => n[0]).join('').toUpperCase() || <UserIcon className="h-4 w-4" />}
             </AvatarFallback>
-          </Avatar>
-          
+          </Avatar> */}
+
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-lg truncate leading-none">{student.name}</h3>
-              <Badge 
-                variant={isSeen ? "outline" : (student.gpa && student.gpa < 2.0 ? "destructive" : "secondary")}
+              <h3 className="font-semibold text-lg truncate leading-none">
+                {student.name}
+              </h3>
+              <Badge
+                variant={
+                  isSeen
+                    ? "outline"
+                    : student.gpa && student.gpa < 2.0
+                      ? "warning"
+                      : "secondary"
+                }
                 className="shrink-0"
               >
                 GPA: {student.gpa?.toFixed(2)}
               </Badge>
             </div>
-            
+
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
               <div className="flex items-center gap-1">
                 <GraduationCap className="h-3 w-3" />
@@ -105,18 +137,20 @@ export function GuidanceStudentList({
           </div>
         </div>
 
-        {student.guidanceStatus === "summoned" && !isSeen && (
-          <div className="px-5 py-2 bg-amber-500/10 border-y border-amber-500/20 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-            <Clock className="h-3 w-3 animate-pulse" />
-            Awaiting Advisor Visit
+        {/* {student.guidanceStatus === "summoned" && !isSeen && (
+          <div className="px-4 py-2 pb-5">
+            <div className="rounded px-3 py-2 bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              <Clock className="h-3 w-3 animate-pulse" />
+              Awaiting Student Visit
+            </div>
           </div>
-        )}
+        )} */}
 
-        <div className="p-4 bg-muted/20 border-t flex gap-2">
+        <div className="p-3 pb-0 bg-muted/20 border-t flex gap-2">
           {!isSeen ? (
             student.guidanceStatus !== "summoned" ? (
               <Button
-                className="w-full h-9 bg-rose-600 hover:bg-rose-700 text-white font-medium"
+                className="w-full h-9 cursor-pointer bg-amber-500 hover:bg-amber-600 text-white font-medium dark:bg-amber-600 dark:hover:bg-amber-700 transition-colors"
                 onClick={() => handleSummon(student.uid)}
                 disabled={loadingId === student.uid}
               >
@@ -125,7 +159,7 @@ export function GuidanceStudentList({
               </Button>
             ) : (
               <Button
-                className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-transform active:scale-[0.98]"
+                className="w-full h-9 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-transform active:scale-[0.98]"
                 onClick={() => handleMarkSeen(student.uid)}
                 disabled={loadingId === student.uid}
               >
@@ -148,19 +182,28 @@ export function GuidanceStudentList({
     <Tabs defaultValue="pending" className="w-full">
       <div className="px-6 pt-4">
         <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-          <TabsTrigger value="pending">Pending ({activeStudents.length})</TabsTrigger>
-          <TabsTrigger value="completed">Completed ({seenStudents.length})</TabsTrigger>
+          <TabsTrigger value="pending">
+            Pending ({activeStudents.length})
+          </TabsTrigger>
+          <TabsTrigger value="completed">
+            Completed ({seenStudents.length})
+          </TabsTrigger>
         </TabsList>
       </div>
-      
-      <TabsContent value="pending" className="mt-4 px-6 pb-6 outline-none focus:ring-0">
+
+      <TabsContent
+        value="pending"
+        className="mt-4 px-6 pb-6 outline-none focus:ring-0"
+      >
         {activeStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-indigo-50 dark:bg-indigo-900/20 p-4 mb-4">
               <CheckCircle className="h-8 w-8 text-indigo-500" />
             </div>
             <h3 className="text-lg font-medium">All clear!</h3>
-            <p className="text-muted-foreground">No students currently flagged for guidance.</p>
+            <p className="text-muted-foreground">
+              No students currently flagged for guidance.
+            </p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -171,7 +214,10 @@ export function GuidanceStudentList({
         )}
       </TabsContent>
 
-      <TabsContent value="completed" className="mt-4 px-6 pb-6 outline-none focus:ring-0">
+      <TabsContent
+        value="completed"
+        className="mt-4 px-6 pb-6 outline-none focus:ring-0"
+      >
         {seenStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
             <p>No students processed yet this semester.</p>

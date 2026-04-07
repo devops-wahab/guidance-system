@@ -150,49 +150,7 @@ export default async function AdvisorDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Guidance Progress Card */}
-        <Card className="lg:col-span-1 border-none bg-card/50 shadow-md">
-          <CardHeader>
-            <CardTitle className="text-lg">Guidance Pipeline</CardTitle>
-            <CardDescription>
-              Progress towards clearing at-risk flags
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Overall Completion
-                </span>
-                <span className="font-bold">{completionRate}%</span>
-              </div>
-              <Progress value={completionRate} className="h-3" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Pending</div>
-                <div className="text-xl font-semibold">
-                  {stats.needsGuidance - stats.summoned - stats.seen}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">In Progress</div>
-                <div className="text-xl font-semibold">{stats.summoned}</div>
-              </div>
-            </div>
-
-            <Button
-              className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
-              variant="default"
-            >
-              Generate Report
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-6 lg:grid-cols-3 mt-10">
         {/* Student List Section */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
