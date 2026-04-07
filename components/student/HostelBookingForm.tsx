@@ -19,6 +19,7 @@ import {
   Loader2,
   CreditCard,
   Building2,
+  AlertCircle,
 } from "lucide-react";
 import {
   getHostelRooms,
@@ -26,6 +27,7 @@ import {
   HostelRoom,
 } from "@/lib/student-actions";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function HostelBookingForm() {
   const [selectedBlock, setSelectedBlock] = useState<string>("boys_a");
@@ -47,6 +49,7 @@ export function HostelBookingForm() {
       setLoadingRooms(false);
     }
   };
+
   useEffect(() => {
     handleBlockChange("boys_a");
   }, []);
@@ -55,27 +58,17 @@ export function HostelBookingForm() {
     if (!selectedRoom) return;
 
     startTransition(async () => {
-      // Simulate Payment Gateway Redirect/Verification
-      toast.loading("Redirecting to secure payment gateway...", {
-        id: "payment",
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.loading("Verifying transaction...", { id: "payment" });
-
+      toast.loading("Redirecting to payment gateway...", { id: "payment" });
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      
       const paymentRef = `HOSTEL-${Math.random().toString(36).substring(7).toUpperCase()}`;
 
       try {
         const result = await bookHostelRoom(selectedRoom, paymentRef);
         if (result.success) {
-          toast.success("Payment successful! Room allocated.", {
-            id: "payment",
-          });
+          toast.success("Room allocated successfully!", { id: "payment" });
         } else {
-          toast.error(result.error || "Failed to finalize booking", {
-            id: "payment",
-          });
+          toast.error(result.error || "Failed to finalize booking", { id: "payment" });
         }
       } catch (error) {
         toast.error("Something went wrong", { id: "payment" });
@@ -83,243 +76,147 @@ export function HostelBookingForm() {
     });
   };
 
+  const selectedRoomData = rooms.find((r) => r.id === selectedRoom);
+
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-2 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Location</CardTitle>
-            <CardDescription>
-              Choose your preferred hostel block first.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            <RadioGroup
-              value={selectedBlock}
+    <div className="grid gap-6 lg:grid-cols-12 max-w-6xl mx-auto">
+      <div className="lg:col-span-8 space-y-6">
+        <Tabs defaultValue="boys" onValueChange={(v) => handleBlockChange(v === "boys" ? "boys_a" : "girls_a")}>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="grid w-[200px] grid-cols-2">
+              <TabsTrigger value="boys">Boys</TabsTrigger>
+              <TabsTrigger value="girls">Girls</TabsTrigger>
+            </TabsList>
+            
+            <RadioGroup 
+              value={selectedBlock} 
               onValueChange={handleBlockChange}
-              className="grid gap-6"
+              className="flex gap-4"
             >
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <Users2 className="h-5 w-5 text-blue-500" />
-                  <h3 className="font-semibold text-lg">Boys Hostel</h3>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Label
-                    htmlFor="boys_a"
-                    className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span className="font-bold">Block A</span>
-                      <span className="text-xs text-blue-600">
-                        Near Main Campus
-                      </span>
-                    </div>
-                    <RadioGroupItem value="boys_a" id="boys_a" />
-                  </Label>
-                  <Label
-                    htmlFor="boys_b"
-                    className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span className="font-bold">Block B</span>
-                      <span className="text-xs text-blue-600">Quiet Zone</span>
-                    </div>
-                    <RadioGroupItem value="boys_b" id="boys_b" />
-                  </Label>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <Users2 className="h-5 w-5 text-pink-500" />
-                  <h3 className="font-semibold text-lg">Girls Hostel</h3>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Label
-                    htmlFor="girls_a"
-                    className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span className="font-bold">Block A</span>
-                      <span className="text-xs text-pink-600">Secure Wing</span>
-                    </div>
-                    <RadioGroupItem value="girls_a" id="girls_a" />
-                  </Label>
-                  <Label
-                    htmlFor="girls_b"
-                    className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span className="font-bold">Block B</span>
-                      <span className="text-xs text-pink-600">Garden View</span>
-                    </div>
-                    <RadioGroupItem value="girls_b" id="girls_b" />
-                  </Label>
-                </div>
-              </div>
+              {["a", "b"].map((s) => {
+                const id = `${selectedBlock.split("_")[0]}_${s}`;
+                return (
+                  <div key={id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={id} id={id} />
+                    <Label htmlFor={id} className="text-sm font-medium uppercase">Block {s}</Label>
+                  </div>
+                );
+              })}
             </RadioGroup>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Rooms</CardTitle>
-            <CardDescription>
-              Select an available room in{" "}
-              {selectedBlock.includes("boys") ? "Boys" : "Girls"}{" "}
-              {selectedBlock.endsWith("_a") ? "Block A" : "Block B"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingRooms ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <p>Fetching real-time availability...</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {rooms.map((room) => {
-                  const isFull = room.occupied >= room.capacity;
-                  const available = room.capacity - room.occupied;
+          <Card className="border-none shadow-none bg-accent/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Select a Room</CardTitle>
+              <CardDescription>
+                Showing available rooms in {selectedBlock.includes("boys") ? "Boys" : "Girls"} {selectedBlock.endsWith("_a") ? "Block A" : "Block B"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingRooms ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <p className="text-xs text-muted-foreground">Checking availability...</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {rooms.map((room) => {
+                    const isFull = room.occupied >= room.capacity;
+                    const isSelected = selectedRoom === room.id;
 
-                  return (
-                    <div
-                      key={room.id}
-                      onClick={() => !isFull && setSelectedRoom(room.id)}
-                      className={`
-                        group relative flex flex-col p-4 border rounded-xl transition-all duration-200
-                        ${isFull ? "opacity-60 cursor-not-allowed bg-muted/20" : "cursor-pointer hover:border-primary hover:shadow-md"}
-                        ${selectedRoom === room.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border"}
-                      `}
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-2">
-                          <Building2
-                            className={`h-5 w-5 ${selectedRoom === room.id ? "text-primary" : "text-muted-foreground"}`}
-                          />
-                          <span className="font-bold text-lg">
-                            {room.roomNumber}
-                          </span>
+                    return (
+                      <button
+                        key={room.id}
+                        disabled={isFull}
+                        onClick={() => setSelectedRoom(room.id)}
+                        className={`
+                          p-4 rounded-xl border transition-all text-left relative overflow-hidden
+                          ${isFull ? "opacity-50 cursor-not-allowed bg-muted" : "hover:border-primary/50 bg-card"}
+                          ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border shadow-sm"}
+                        `}
+                      >
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-lg">{room.roomNumber}</span>
+                          {isFull ? (
+                            <Badge variant="outline" className="text-[10px] scale-90">Full</Badge>
+                          ) : (
+                            <span className="text-[10px] font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                              {room.capacity - room.occupied} LEFT
+                            </span>
+                          )}
                         </div>
-                        {isFull ? (
-                          <Badge variant="destructive">Full</Badge>
-                        ) : (
-                          <Badge
-                            variant="secondary"
-                            className="bg-green-500/10 text-green-600 border-green-200"
-                          >
-                            {available} Bed{available > 1 ? "s" : ""} Left
-                          </Badge>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                          {room.occupied}/{room.capacity} OCCUPIED
+                        </div>
+                        
+                        {isSelected && (
+                          <div className="absolute -right-1 -top-1 bg-primary p-1.5 rounded-bl-lg">
+                            <CheckCircle2 className="h-3 w-3 text-white" />
+                          </div>
                         )}
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Tabs>
 
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Occupancy</span>
-                          <span>
-                            {room.occupied}/{room.capacity} beds taken
-                          </span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-500 ${isFull ? "bg-destructive" : available === 1 ? "bg-amber-500" : "bg-primary"}`}
-                            style={{
-                              width: `${(room.occupied / room.capacity) * 100}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {selectedRoom === room.id && (
-                        <div className="absolute top-2 right-2">
-                          <CheckCircle2 className="h-5 w-5 text-primary fill-background" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex items-start gap-3 p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/50">
+          <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-800/80 dark:text-blue-300/80 leading-relaxed">
+            Real-time allocation. Your selected space is only secured after a successful payment transaction.
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-6">
-        <Card className="sticky top-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Order Summary</CardTitle>
+      <div className="lg:col-span-4">
+        <Card className="sticky top-6 border-2">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle className="text-base uppercase tracking-tight">Summary</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Hostel Category</span>
-                <span className="font-medium capitalize">
-                  {selectedBlock.split("_")[0]} Hostel
+          <CardContent className="pt-6 space-y-6">
+            <div className="space-y-3">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground uppercase">Selection</span>
+                <span className="font-semibold text-right">
+                  {selectedBlock.includes("boys") ? "Boys" : "Girls"} {selectedBlock.endsWith("_a") ? "Block A" : "Block B"}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Block</span>
-                <span className="font-medium">
-                  {selectedBlock.endsWith("_a") ? "Block A" : "Block B"}
-                </span>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground uppercase">Room</span>
+                <span className="font-semibold">{selectedRoomData?.roomNumber || "---"}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Room</span>
-                <span className="font-medium">
-                  {selectedRoom
-                    ? rooms.find((r) => r.id === selectedRoom)?.roomNumber
-                    : "Not selected"}
-                </span>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground uppercase">Units</span>
+                <span className="font-semibold">4-Man Shared</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Room Type</span>
-                <span className="font-medium">4-Man Standard</span>
-              </div>
-              <div className="pt-4 border-t flex justify-between items-center">
-                <span className="font-bold text-lg">Total Amount</span>
-                <span className="text-2xl font-black text-primary">
-                  ₦45,000
-                </span>
+              
+              <div className="pt-4 mt-2 border-t">
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Grand Total</span>
+                  <span className="text-2xl font-black tracking-tighter">₦45,000</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground text-right">Maintenance fee inclusive</p>
               </div>
             </div>
 
             <Button
-              className="w-full h-14 text-lg font-bold gap-2 shadow-lg shadow-primary/20"
+              className="w-full h-12 text-sm font-bold uppercase tracking-widest shadow-xl"
               disabled={!selectedRoom || isPending}
               onClick={handleBookAndPay}
             >
               {isPending ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <CreditCard className="h-5 w-5" />
+                <CreditCard className="h-4 w-4 mr-2" />
               )}
-              {isPending ? "Processing..." : "Pay & Book Instantly"}
+              {isPending ? "Hold Tight..." : "Confirm & Pay"}
             </Button>
 
-            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg text-[10px] text-muted-foreground">
-              <CreditCard className="h-4 w-4 shrink-0" />
-              <p>
-                Secure payment processed by System Payment Gateway. Instant
-                allocation upon success.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-amber-500 bg-amber-50/20">
-          <CardContent className="pt-6">
-            <div className="flex gap-3">
-              <Home className="h-5 w-5 text-amber-600 shrink-0" />
-              <div>
-                <h4 className="font-semibold text-amber-900 mb-1">
-                  Information
-                </h4>
-                <p className="text-sm text-amber-800/80 leading-snug">
-                  Rooms are allocated in real-time. Your bed is only reserved
-                  after a successful payment transaction.
-                </p>
-              </div>
+            <div className="text-[10px] text-center text-muted-foreground">
+              Powered by secure payment encryption
             </div>
           </CardContent>
         </Card>
