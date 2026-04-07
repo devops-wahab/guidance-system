@@ -139,3 +139,75 @@ export async function markStudentAsSeen(studentId: string) {
     return { error: error.message };
   }
 }
+
+/**
+ * Get aggregated statistics for the advisor dashboard
+ */
+export async function getAdvisorStats() {
+  try {
+    const advisor = await getAdvisorProfile();
+    const department = advisor.department;
+
+    if (!department) {
+      return {
+        totalStudents: 0,
+        needsGuidance: 0,
+        summoned: 0,
+        seen: 0,
+        avgGpa: 0,
+      };
+    }
+
+    const studentsRef = adminDb.collection("students");
+    const snapshot = await studentsRef.where("department", "==", department).get();
+
+    let totalStudents = 0;
+    let needsGuidance = 0;
+    let summoned = 0;
+    let seen = 0;
+    let totalGpa = 0;
+    let gpaCount = 0;
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      totalStudents++;
+
+      if (data.gpa) {
+        totalGpa += data.gpa;
+        gpaCount++;
+      }
+
+      const status = data.guidanceStatus;
+      if (status === "summoned") {
+        summoned++;
+      } else if (status === "seen") {
+        seen++;
+      }
+
+      // Check for needs_guidance (either status or GPA)
+      if (
+        (data.gpa && data.gpa < 2.0) ||
+        status === "needs_guidance"
+      ) {
+        needsGuidance++;
+      }
+    });
+
+    return {
+      totalStudents,
+      needsGuidance,
+      summoned,
+      seen,
+      avgGpa: gpaCount > 0 ? Number((totalGpa / gpaCount).toFixed(2)) : 0,
+    };
+  } catch (error) {
+    console.error("Error fetching advisor stats:", error);
+    return {
+      totalStudents: 0,
+      needsGuidance: 0,
+      summoned: 0,
+      seen: 0,
+      avgGpa: 0,
+    };
+  }
+}

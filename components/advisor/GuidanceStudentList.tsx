@@ -3,27 +3,20 @@
 import { User } from "@/lib/types/admin";
 import { summonStudent, markStudentAsSeen } from "@/lib/advisor-actions";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Megaphone, CheckCircle, Clock } from "lucide-react";
+import { Megaphone, CheckCircle, Clock, User as UserIcon, Phone, Mail, GraduationCap } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface GuidanceStudentListProps {
   initialStudents: User[];
 }
 
-// Helper function to format phone number from +234 to 0 format
 const formatPhoneNumber = (phoneNumber: string | undefined): string => {
   if (!phoneNumber) return "N/A";
-  // Replace +234 with 0
   return phoneNumber.replace(/^\+234\s*/, "0");
 };
 
@@ -41,7 +34,6 @@ export function GuidanceStudentList({
         toast.error(result.error);
       } else {
         toast.success("Student summoned successfully");
-        // Update local state
         setStudents((prev) =>
           prev.map((s) =>
             s.uid === studentId ? { ...s, guidanceStatus: "summoned" } : s,
@@ -63,7 +55,6 @@ export function GuidanceStudentList({
         toast.error(result.error);
       } else {
         toast.success("Student marked as seen");
-        // Update local state to remove or update status
         setStudents((prev) =>
           prev.map((s) =>
             s.uid === studentId ? { ...s, guidanceStatus: "seen" } : s,
@@ -80,114 +71,119 @@ export function GuidanceStudentList({
   const activeStudents = students.filter((s) => s.guidanceStatus !== "seen");
   const seenStudents = students.filter((s) => s.guidanceStatus === "seen");
 
+  const StudentCard = ({ student, isSeen = false }: { student: User, isSeen?: boolean }) => (
+    <Card className={`group overflow-hidden transition-all hover:ring-2 hover:ring-indigo-500/20 ${isSeen ? 'bg-muted/30 opacity-80' : 'bg-card'}`}>
+      <CardContent className="p-0">
+        <div className="p-5 flex items-start gap-4">
+          <Avatar className="h-12 w-12 border-2 border-indigo-100 dark:border-indigo-900">
+            <AvatarFallback className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold">
+              {student.name?.split(' ').map(n => n[0]).join('').toUpperCase() || <UserIcon className="h-4 w-4" />}
+            </AvatarFallback>
+          </Avatar>
+          
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold text-lg truncate leading-none">{student.name}</h3>
+              <Badge 
+                variant={isSeen ? "outline" : (student.gpa && student.gpa < 2.0 ? "destructive" : "secondary")}
+                className="shrink-0"
+              >
+                GPA: {student.gpa?.toFixed(2)}
+              </Badge>
+            </div>
+            
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
+              <div className="flex items-center gap-1">
+                <GraduationCap className="h-3 w-3" />
+                {student.studentId} • {student.level}
+              </div>
+              <div className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                {formatPhoneNumber(student.phoneNumber)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {student.guidanceStatus === "summoned" && !isSeen && (
+          <div className="px-5 py-2 bg-amber-500/10 border-y border-amber-500/20 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+            <Clock className="h-3 w-3 animate-pulse" />
+            Awaiting Advisor Visit
+          </div>
+        )}
+
+        <div className="p-4 bg-muted/20 border-t flex gap-2">
+          {!isSeen ? (
+            student.guidanceStatus !== "summoned" ? (
+              <Button
+                className="w-full h-9 bg-rose-600 hover:bg-rose-700 text-white font-medium"
+                onClick={() => handleSummon(student.uid)}
+                disabled={loadingId === student.uid}
+              >
+                <Megaphone className="mr-2 h-4 w-4" />
+                Summon Student
+              </Button>
+            ) : (
+              <Button
+                className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-transform active:scale-[0.98]"
+                onClick={() => handleMarkSeen(student.uid)}
+                disabled={loadingId === student.uid}
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Complete Session
+              </Button>
+            )
+          ) : (
+            <div className="w-full flex items-center justify-center py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 gap-1">
+              <CheckCircle className="h-3 w-3" />
+              Guidance Logged
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Megaphone className="h-5 w-5 text-destructive" />
-          Students Needing Guidance ({activeStudents.length})
-        </h2>
-
+    <Tabs defaultValue="pending" className="w-full">
+      <div className="px-6 pt-4">
+        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+          <TabsTrigger value="pending">Pending ({activeStudents.length})</TabsTrigger>
+          <TabsTrigger value="completed">Completed ({seenStudents.length})</TabsTrigger>
+        </TabsList>
+      </div>
+      
+      <TabsContent value="pending" className="mt-4 px-6 pb-6 outline-none focus:ring-0">
         {activeStudents.length === 0 ? (
-          <p className="text-muted-foreground italic">
-            No students currently flagged for guidance.
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="rounded-full bg-indigo-50 dark:bg-indigo-900/20 p-4 mb-4">
+              <CheckCircle className="h-8 w-8 text-indigo-500" />
+            </div>
+            <h3 className="text-lg font-medium">All clear!</h3>
+            <p className="text-muted-foreground">No students currently flagged for guidance.</p>
+          </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             {activeStudents.map((student) => (
-              <Card key={student.uid} className="shadow-sm">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{student.name}</CardTitle>
-                    <Badge variant="destructive" className="ml-2">
-                      GPA: {student.gpa?.toFixed(2)}
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    {student.studentId} • {student.level}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pb-2 text-sm">
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <div>
-                      <span className="text-muted-foreground block text-xs">
-                        Department
-                      </span>
-                      <span className="font-medium">{student.department}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-xs">
-                        Phone
-                      </span>
-                      <span className="font-medium">
-                        {formatPhoneNumber(student.phoneNumber)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {student.guidanceStatus === "summoned" && (
-                    <div className="mt-4 p-2 bg-amber-50 rounded border border-amber-200 text-amber-800 flex items-center gap-2 text-xs">
-                      <Clock className="h-3 w-3" />
-                      Summoned - Waiting for visit
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter className="pt-2 flex gap-2">
-                  {student.guidanceStatus !== "summoned" ? (
-                    <Button
-                      className="w-full"
-                      variant="destructive"
-                      onClick={() => handleSummon(student.uid)}
-                      disabled={loadingId === student.uid}
-                    >
-                      {loadingId === student.uid ? "Sending..." : "Come See Me"}
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant="default" // Green/Primary for completion
-                      onClick={() => handleMarkSeen(student.uid)}
-                      disabled={loadingId === student.uid}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Mark as Seen
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
+              <StudentCard key={student.uid} student={student} />
             ))}
           </div>
         )}
-      </div>
+      </TabsContent>
 
-      {seenStudents.length > 0 && (
-        <div className="opacity-75">
-          <h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            Recently Seen ({seenStudents.length})
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <TabsContent value="completed" className="mt-4 px-6 pb-6 outline-none focus:ring-0">
+        {seenStudents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+            <p>No students processed yet this semester.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
             {seenStudents.map((student) => (
-              <Card
-                key={student.uid}
-                className="bg-muted/50 border-l-4 border-l-green-500"
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg text-muted-foreground">
-                    {student.name}
-                  </CardTitle>
-                  <CardDescription>Guidance Completed</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Student verified and guided.
-                  </p>
-                </CardContent>
-              </Card>
+              <StudentCard key={student.uid} student={student} isSeen />
             ))}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }
