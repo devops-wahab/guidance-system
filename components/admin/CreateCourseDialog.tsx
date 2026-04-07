@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { createCourse } from "@/lib/admin-actions";
-import { Course, CreateCourseData } from "@/lib/types/admin";
+import { Course } from "@/lib/types/admin";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +19,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+// Schema
+const createCourseSchema = z.object({
+  code: z
+    .string()
+    .min(3, "Course code must be at least 3 characters")
+    .max(10, "Course code must not exceed 10 characters")
+    .toUpperCase(),
+  name: z.string().min(3, "Course name must be at least 3 characters"),
+  credits: z
+    .number()
+    .min(1, "Credits must be at least 1")
+    .max(6, "Credits cannot exceed 6"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+});
+
+type CreateCourseFormValues = z.infer<typeof createCourseSchema>;
+
 interface CreateCourseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,41 +47,45 @@ export function CreateCourseDialog({
   onOpenChange,
   onCourseCreated,
 }: CreateCourseDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState<CreateCourseData>({
-    code: "",
-    name: "",
-    credits: 3,
-    description: "",
-    category: "Core",
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateCourseFormValues>({
+    resolver: zodResolver(createCourseSchema),
+    defaultValues: {
+      code: "",
+      name: "",
+      credits: 3,
+      description: "",
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  // Reset form whenever the dialog opens/closes
+  useEffect(() => {
+    if (!open) reset();
+  }, [open, reset]);
 
-    const result = await createCourse(formData);
+  const onSubmit = async (values: CreateCourseFormValues) => {
+    // We explicitly add an empty category to satisfy the existing API if needed,
+    // or we'll update the API next.
+    const result = await createCourse({ ...values, category: "" });
 
     if ("error" in result) {
-      setError(result.error);
-      setLoading(false);
-    } else {
-      const newCourse: Course = {
-        id: result.id!,
-        ...formData,
-      };
-      onCourseCreated(newCourse);
-      setFormData({
-        code: "",
-        name: "",
-        credits: 3,
-        description: "",
-        category: "Core",
-      });
-      setLoading(false);
+      setError("root", { message: result.error });
+      return;
     }
+
+    const newCourse: Course = {
+      id: result.id!,
+      ...values,
+      category: "", // Placeholder for backward compatibility
+    };
+
+    onCourseCreated(newCourse);
+    reset();
   };
 
   return (
@@ -74,31 +98,25 @@ export function CreateCourseDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="code">Course Code</Label>
-            <Input
-              id="code"
-              placeholder="e.g., CS101"
-              value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value })
-              }
-              required
-            />
+            <Input id="code" {...register("code")} />
+            {errors.code && (
+              <p className="text-xs text-destructive -mt-1">
+                {errors.code.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="name">Course Name</Label>
-            <Input
-              id="name"
-              placeholder="e.g., Introduction to Computer Science"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              required
-            />
+            <Input id="name" {...register("name")} />
+            {errors.name && (
+              <p className="text-xs text-destructive -mt-1">
+                {errors.name.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -106,43 +124,33 @@ export function CreateCourseDialog({
             <Input
               id="credits"
               type="number"
-              min="1"
-              max="6"
-              value={formData.credits}
-              onChange={(e) =>
-                setFormData({ ...formData, credits: parseInt(e.target.value) })
-              }
-              required
+              {...register("credits", { valueAsNumber: true })}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Input
-              id="category"
-              placeholder="e.g., Core, Elective, General Education"
-              value={formData.category}
-              onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
-              }
-              required
-            />
+            {errors.credits && (
+              <p className="text-xs text-destructive -mt-1">
+                {errors.credits.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
+              {...register("description")}
               placeholder="Course description..."
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
               rows={3}
             />
+            {errors.description && (
+              <p className="text-xs text-destructive -mt-1">
+                {errors.description.message}
+              </p>
+            )}
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {errors.root && (
+            <p className="text-sm text-destructive">{errors.root.message}</p>
+          )}
 
           <DialogFooter>
             <Button
@@ -152,8 +160,8 @@ export function CreateCourseDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Course"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create Course"}
             </Button>
           </DialogFooter>
         </form>

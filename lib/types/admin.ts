@@ -20,7 +20,7 @@ export interface User {
   guidanceStatus?:
     | "good_standing"
     | "needs_guidance"
-    | "sumoned"
+    | "summoned"
     | "seen"
     | "completed";
 

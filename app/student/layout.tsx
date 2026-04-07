@@ -16,8 +16,8 @@ const studentItems: any[] = [
     href: "/student/registration",
     icon: ListChecks,
   },
-  { title: "Transcript", href: "/student/transcript", icon: FileText },
-  { title: "Degree Progress", href: "/student/progress", icon: GraduationCap },
+  // { title: "Transcript", href: "/student/transcript", icon: FileText },
+  // { title: "Degree Progress", href: "/student/progress", icon: GraduationCap },
   { variant: "separator" },
   { title: "Apply Hostel", href: "/student/hostel", icon: Home },
 ];

@@ -1,23 +1,13 @@
 "use client";
 
 import { Sidebar } from "@/components/dashboard/Sidebar";
-import { LayoutDashboard, Calendar, Users } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 
 const advisorItems = [
   {
     title: "Dashboard",
     href: "/advisor",
     icon: LayoutDashboard,
-  },
-  {
-    title: "Schedule",
-    href: "/advisor/schedule",
-    icon: Calendar,
-  },
-  {
-    title: "Students",
-    href: "/advisor/students",
-    icon: Users,
   },
 ];
 

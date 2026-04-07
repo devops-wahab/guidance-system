@@ -21,11 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
 import { DeleteUserDialog } from "./DeleteUserDialog";
-import { AssignAdvisorDialog } from "./AssignAdvisorDialog";
 
 interface UserManagementTableProps {
   initialUsers: User[];
@@ -40,11 +39,8 @@ export function UserManagementTable({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [assignAdvisorDialogOpen, setAssignAdvisorDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  // Get list of advisors for assignment
-  const advisors = users.filter((u) => u.role === "advisor");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
 
   // Filter users
   const filteredUsers = users.filter((user) => {
@@ -54,6 +50,26 @@ export function UserManagementTable({
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  };
+
+  const handleRoleFilterChange = (val: string) => {
+    setRoleFilter(val);
+    setCurrentPage(1);
+  };
 
   const handleUserCreated = (newUser: User) => {
     setUsers([...users, newUser]);
@@ -72,16 +88,6 @@ export function UserManagementTable({
     setSelectedUser(null);
   };
 
-  const handleAssignmentComplete = (studentId: string, advisorId: string) => {
-    setUsers(
-      users.map((u) =>
-        u.uid === studentId ? { ...u, advisorId: advisorId } : u,
-      ),
-    );
-    setAssignAdvisorDialogOpen(false);
-    setSelectedUser(null);
-  };
-
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case "admin":
@@ -89,9 +95,9 @@ export function UserManagementTable({
       case "advisor":
         return "default";
       case "student":
-        return "secondary";
-      default:
         return "outline";
+      default:
+        return "secondary";
     }
   };
 
@@ -140,23 +146,22 @@ export function UserManagementTable({
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Advisor</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.length === 0 ? (
+                {paginatedUsers.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={5}
                       className="text-center text-muted-foreground"
                     >
                       No users found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  paginatedUsers.map((user) => (
                     <TableRow key={user.uid}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
@@ -166,41 +171,10 @@ export function UserManagementTable({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {user.role === "student" ? (
-                          user.advisorId ? (
-                            <span className="text-sm">
-                              {users.find((u) => u.uid === user.advisorId)
-                                ?.name || "Unknown"}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              Not assigned
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            -
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
                         {new Date(user.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {user.role === "student" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setAssignAdvisorDialogOpen(true);
-                              }}
-                              title="Assign Advisor"
-                            >
-                              <UserPlus className="h-4 w-4" />
-                            </Button>
-                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -229,6 +203,40 @@ export function UserManagementTable({
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to{" "}
+                {Math.min(startIndex + itemsPerPage, filteredUsers.length)} of{" "}
+                {filteredUsers.length} users
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -253,15 +261,6 @@ export function UserManagementTable({
             user={selectedUser}
             onUserDeleted={handleUserDeleted}
           />
-          {selectedUser.role === "student" && (
-            <AssignAdvisorDialog
-              open={assignAdvisorDialogOpen}
-              onOpenChange={setAssignAdvisorDialogOpen}
-              student={selectedUser}
-              advisors={advisors}
-              onAssignmentComplete={handleAssignmentComplete}
-            />
-          )}
         </>
       )}
     </div>

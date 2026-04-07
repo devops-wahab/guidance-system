@@ -20,6 +20,13 @@ interface GuidanceStudentListProps {
   initialStudents: User[];
 }
 
+// Helper function to format phone number from +234 to 0 format
+const formatPhoneNumber = (phoneNumber: string | undefined): string => {
+  if (!phoneNumber) return "N/A";
+  // Replace +234 with 0
+  return phoneNumber.replace(/^\+234\s*/, "0");
+};
+
 export function GuidanceStudentList({
   initialStudents,
 }: GuidanceStudentListProps) {
@@ -37,7 +44,7 @@ export function GuidanceStudentList({
         // Update local state
         setStudents((prev) =>
           prev.map((s) =>
-            s.uid === studentId ? { ...s, guidanceStatus: "sumoned" } : s,
+            s.uid === studentId ? { ...s, guidanceStatus: "summoned" } : s,
           ),
         );
       }
@@ -88,10 +95,7 @@ export function GuidanceStudentList({
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {activeStudents.map((student) => (
-              <Card
-                key={student.uid}
-                className="border-l-4 border-l-destructive shadow-sm"
-              >
+              <Card key={student.uid} className="shadow-sm">
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg">{student.name}</CardTitle>
@@ -116,12 +120,12 @@ export function GuidanceStudentList({
                         Phone
                       </span>
                       <span className="font-medium">
-                        {student.phoneNumber || "N/A"}
+                        {formatPhoneNumber(student.phoneNumber)}
                       </span>
                     </div>
                   </div>
 
-                  {student.guidanceStatus === "sumoned" && (
+                  {student.guidanceStatus === "summoned" && (
                     <div className="mt-4 p-2 bg-amber-50 rounded border border-amber-200 text-amber-800 flex items-center gap-2 text-xs">
                       <Clock className="h-3 w-3" />
                       Summoned - Waiting for visit
@@ -129,7 +133,7 @@ export function GuidanceStudentList({
                   )}
                 </CardContent>
                 <CardFooter className="pt-2 flex gap-2">
-                  {student.guidanceStatus !== "sumoned" ? (
+                  {student.guidanceStatus !== "summoned" ? (
                     <Button
                       className="w-full"
                       variant="destructive"
@@ -158,8 +162,8 @@ export function GuidanceStudentList({
 
       {seenStudents.length > 0 && (
         <div className="opacity-75">
-          <h2 className="text-xl font-semibold mb-4 text-muted-foreground flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
+          <h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-500" />
             Recently Seen ({seenStudents.length})
           </h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

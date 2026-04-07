@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { updateCourse } from "@/lib/admin-actions";
-import { Course, UpdateCourseData } from "@/lib/types/admin";
+import { Course } from "@/lib/types/admin";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,6 +18,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+const editCourseSchema = z.object({
+  code: z
+    .string()
+    .min(3, "Course code must be at least 3 characters")
+    .max(10, "Course code must not exceed 10 characters")
+    .toUpperCase(),
+  name: z.string().min(3, "Course name must be at least 3 characters"),
+  credits: z
+    .number()
+    .min(1, "Credits must be at least 1")
+    .max(6, "Credits cannot exceed 6"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+});
+
+type EditCourseFormValues = z.infer<typeof editCourseSchema>;
 
 interface EditCourseDialogProps {
   open: boolean;
@@ -29,34 +48,49 @@ export function EditCourseDialog({
   course,
   onCourseUpdated,
 }: EditCourseDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState<UpdateCourseData>({
-    code: course.code,
-    name: course.name,
-    credits: course.credits,
-    description: course.description,
-    category: course.category,
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<EditCourseFormValues>({
+    resolver: zodResolver(editCourseSchema),
+    defaultValues: {
+      code: course.code,
+      name: course.name,
+      credits: course.credits,
+      description: course.description,
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  // Load course data into form when dialog opens
+  useEffect(() => {
+    if (open) {
+      reset({
+        code: course.code,
+        name: course.name,
+        credits: course.credits,
+        description: course.description,
+      });
+    }
+  }, [open, course, reset]);
 
-    const result = await updateCourse(course.id, formData);
+  const onSubmit = async (values: EditCourseFormValues) => {
+    const result = await updateCourse(course.id, { ...values, category: "" });
 
     if ("error" in result) {
-      setError(result.error);
-      setLoading(false);
-    } else {
-      const updatedCourse: Course = {
-        ...course,
-        ...formData,
-      };
-      onCourseUpdated(updatedCourse);
-      setLoading(false);
+      setError("root", { message: result.error });
+      return;
     }
+
+    const updatedCourse: Course = {
+      ...course,
+      ...values,
+      category: "", // Preserve empty category for backward compatibility
+    };
+
+    onCourseUpdated(updatedCourse);
   };
 
   return (
@@ -67,29 +101,29 @@ export function EditCourseDialog({
           <DialogDescription>Update course information.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="edit-code">Course Code</Label>
-            <Input
-              id="edit-code"
-              value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value })
-              }
-              required
-            />
+            <Input id="edit-code" {...register("code")} placeholder="e.g. CS101" />
+            {errors.code && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.code.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="edit-name">Course Name</Label>
             <Input
               id="edit-name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              required
+              {...register("name")}
+              placeholder="e.g. Intro to Programming"
             />
+            {errors.name && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.name.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -97,41 +131,33 @@ export function EditCourseDialog({
             <Input
               id="edit-credits"
               type="number"
-              min="1"
-              max="6"
-              value={formData.credits}
-              onChange={(e) =>
-                setFormData({ ...formData, credits: parseInt(e.target.value) })
-              }
-              required
+              {...register("credits", { valueAsNumber: true })}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-category">Category</Label>
-            <Input
-              id="edit-category"
-              value={formData.category}
-              onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
-              }
-              required
-            />
+            {errors.credits && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.credits.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="edit-description">Description</Label>
             <Textarea
               id="edit-description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
+              {...register("description")}
+              placeholder="Course description..."
               rows={3}
             />
+            {errors.description && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.description.message}
+              </p>
+            )}
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {errors.root && (
+            <p className="text-sm text-destructive">{errors.root.message}</p>
+          )}
 
           <DialogFooter>
             <Button
@@ -141,8 +167,8 @@ export function EditCourseDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>

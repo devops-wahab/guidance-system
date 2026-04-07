@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "@/lib/auth-actions";
+import { deleteSession } from "@/lib/auth-actions";
 // import { auth } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ export function Sidebar({ items }: SidebarProps) {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut();
+    await deleteSession();
     // router.push("/login");
   };
 

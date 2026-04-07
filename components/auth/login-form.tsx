@@ -79,8 +79,8 @@ export function LoginForm() {
         const idToken = await userCredential.user.getIdToken();
 
         // Step 3: Create session cookie via server action
-        const { createSessionCookie } = await import("@/lib/auth-actions");
-        const result = await createSessionCookie(idToken);
+        const { createSession } = await import("@/lib/auth-actions");
+        const result = await createSession(idToken);
 
         if (result.error) {
           toast.error(result.error);

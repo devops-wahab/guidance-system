@@ -71,7 +71,9 @@ export function CourseRegistrationForm({
         <CardHeader>
           <CardTitle>Course Selection</CardTitle>
           <CardDescription>
-            Select the courses you want to register for this semester.
+            {enrolledCourseIds.length > 0
+              ? "You have already completed your course registration for this semester."
+              : "Select the courses you want to register for this semester."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -87,20 +89,26 @@ export function CourseRegistrationForm({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {availableCourses.map((course) => (
-                  <TableRow key={course.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedCourses.includes(course.id)}
-                        onCheckedChange={() => handleToggleCourse(course.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{course.code}</TableCell>
-                    <TableCell>{course.name}</TableCell>
-                    <TableCell>{course.credits}</TableCell>
-                    <TableCell>{course.level}</TableCell>
-                  </TableRow>
-                ))}
+                {availableCourses.map((course) => {
+                  const isEnrolled = enrolledCourseIds.includes(course.id);
+                  return (
+                    <TableRow key={course.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCourses.includes(course.id)}
+                          onCheckedChange={() => handleToggleCourse(course.id)}
+                          disabled={isEnrolled || isPending}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {course.code}
+                      </TableCell>
+                      <TableCell>{course.name}</TableCell>
+                      <TableCell>{course.credits}</TableCell>
+                      <TableCell>{course.level}</TableCell>
+                    </TableRow>
+                  );
+                })}
                 {availableCourses.length === 0 && (
                   <TableRow>
                     <TableCell
@@ -126,10 +134,16 @@ export function CourseRegistrationForm({
         </div>
         <Button
           onClick={onSubmit}
-          disabled={isPending || selectedCourses.length === 0}
+          disabled={
+            isPending ||
+            selectedCourses.length === 0 ||
+            enrolledCourseIds.length > 0
+          }
         >
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Register Courses
+          {enrolledCourseIds.length > 0
+            ? "Already Registered"
+            : "Register Courses"}
         </Button>
       </div>
     </div>

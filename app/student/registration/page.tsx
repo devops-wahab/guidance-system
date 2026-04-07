@@ -11,9 +11,9 @@ export default async function CourseRegistrationPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Course Registration</h3>
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col gap-2">
+        <h3 className="text-3xl font-bold">Course Registration</h3>
+        <p className="text-sm text-foreground/70">
           Register new courses for the upcoming semester.
         </p>
       </div>

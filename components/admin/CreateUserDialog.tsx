@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { createUser } from "@/lib/admin-actions";
-import { User, CreateUserData } from "@/lib/types/admin";
+import { User } from "@/lib/types/admin";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,59 +25,213 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// ---------------------------------------------------------------------------
+// Zod schema
+// ---------------------------------------------------------------------------
+
+const baseSchema = z.object({
+  name: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  phoneNumber: z
+    .string()
+    .min(1, "Phone number is required")
+    .regex(/^\+?[0-9\s\-().]{7,20}$/, "Enter a valid phone number"),
+  role: z.enum(["student", "advisor", "admin"]),
+  // Student-specific (validated in superRefine)
+  studentId: z.string().optional(),
+  matricNumber: z.string().optional(),
+  major: z.string().optional(),
+  level: z.string().optional(),
+  enrollmentYear: z.any().optional(), // Validated in superRefine
+  expectedGraduation: z.string().optional(),
+  // Advisor-specific (validated in superRefine)
+  department: z.string().optional(),
+  officeLocation: z.string().optional(),
+  officeHours: z.string().optional(),
+});
+
+// Conditionally require student / advisor fields based on role
+const createUserSchema = baseSchema.superRefine((data, ctx) => {
+  if (data.role === "student") {
+    if (!data.studentId?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Student ID is required",
+        path: ["studentId"],
+      });
+    }
+    if (!data.matricNumber?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Matric number is required",
+        path: ["matricNumber"],
+      });
+    }
+    if (!data.major?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Major/Program is required",
+        path: ["major"],
+      });
+    }
+    if (!data.level?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Level is required",
+        path: ["level"],
+      });
+    }
+    if (
+      data.enrollmentYear === undefined ||
+      data.enrollmentYear === null ||
+      isNaN(data.enrollmentYear)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Enrollment year is required",
+        path: ["enrollmentYear"],
+      });
+    } else if (data.enrollmentYear < 1900 || data.enrollmentYear > 2100) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Please enter a valid year between 1900 and 2100",
+        path: ["enrollmentYear"],
+      });
+    }
+    if (!data.expectedGraduation?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Expected graduation is required",
+        path: ["expectedGraduation"],
+      });
+    }
+  }
+
+  if (data.role === "advisor") {
+    if (!data.department?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Department is required for advisors",
+        path: ["department"],
+      });
+    }
+    if (!data.officeLocation?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Office location is required",
+        path: ["officeLocation"],
+      });
+    }
+    if (!data.officeHours?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Office hours are required",
+        path: ["officeHours"],
+      });
+    }
+  }
+});
+
+type CreateUserFormValues = z.infer<typeof createUserSchema>;
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
 interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUserCreated: (user: User) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function CreateUserDialog({
   open,
   onOpenChange,
   onUserCreated,
 }: CreateUserDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState<CreateUserData>({
-    name: "",
-    email: "",
-    password: "",
-    role: "student",
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateUserFormValues>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      phoneNumber: "",
+      role: "student",
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  const role = watch("role");
 
-    const result = await createUser(formData);
+  // Reset form whenever the dialog opens/closes
+  useEffect(() => {
+    if (!open) reset();
+  }, [open, reset]);
+
+  const onSubmit = async (data: CreateUserFormValues) => {
+    const result = await createUser(data);
 
     if ("error" in result) {
-      setError(result.error);
-      setLoading(false);
-    } else {
-      // Create user object for table update
-      const newUser: User = {
-        uid: result.uid!,
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-        createdAt: new Date(),
-      };
-      onUserCreated(newUser);
-      setFormData({ name: "", email: "", password: "", role: "student" });
-      setLoading(false);
+      setError("root", { message: result.error });
+      return;
     }
+
+    const newUser: User = {
+      uid: result.uid!,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      createdAt: new Date(),
+    };
+
+    onUserCreated(newUser);
+    reset();
   };
 
-  const handleRoleChange = (role: any) => {
-    // Reset role-specific fields when role changes
-    setFormData({
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
-      role: role,
-    });
+  const handleRoleChange = (value: "student" | "advisor" | "admin") => {
+    // Preserve common fields, clear role-specific ones
+    setValue("role", value);
+    setValue("studentId", "");
+    setValue("matricNumber", "");
+    setValue("major", "");
+    setValue("level", "");
+    setValue("enrollmentYear", undefined);
+    setValue("expectedGraduation", "");
+    setValue("department", "");
+    setValue("officeLocation", "");
+    setValue("officeHours", "");
+  };
+
+  // Helper: renders a field-level error message
+  const FieldError = ({
+    name,
+  }: {
+    name: keyof CreateUserFormValues | "root";
+  }) => {
+    const error =
+      name === "root"
+        ? errors.root
+        : errors[name as keyof CreateUserFormValues];
+
+    if (!error) return null;
+
+    const message = error.message;
+
+    return typeof message === "string" ? (
+      <p className="text-xs text-destructive mt-1">{message}</p>
+    ) : null;
   };
 
   return (
@@ -87,65 +244,57 @@ export function CreateUserDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Common Fields */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Full Name */}
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              required
-              placeholder="e.g., Chioma Nwankwo"
-            />
+            <Label htmlFor="name">
+              Full Name <span className="text-destructive">*</span>
+            </Label>
+            <Input id="name" {...register("name")} />
+            <div className="-mt-1">
+              <FieldError name="name" />
+            </div>
           </div>
 
+          {/* Phone Number */}
           <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              value={formData.phoneNumber || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, phoneNumber: e.target.value })
-              }
-              placeholder="e.g., +234 901 234 5678"
-            />
+            <Label htmlFor="phoneNumber">
+              Phone Number <span className="text-destructive">*</span>
+            </Label>
+            <Input id="phoneNumber" {...register("phoneNumber")} />
+            <div className="-mt-1">
+              <FieldError name="phoneNumber" />
+            </div>
           </div>
 
+          {/* Email */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              required
-              placeholder="e.g., chioma@example.com"
-            />
+            <Label htmlFor="email">
+              Email <span className="text-destructive">*</span>
+            </Label>
+            <Input id="email" type="email" {...register("email")} />
+            <div className="-mt-1">
+              <FieldError name="email" />
+            </div>
           </div>
 
+          {/* Password */}
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              required
-              minLength={6}
-              placeholder="Minimum 6 characters"
-            />
+            <Label htmlFor="password">
+              Password <span className="text-destructive">*</span>
+            </Label>
+            <Input id="password" type="password" {...register("password")} />
+            <div className="-mt-1">
+              <FieldError name="password" />
+            </div>
           </div>
 
+          {/* Role */}
           <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select value={formData.role} onValueChange={handleRoleChange}>
+            <Label htmlFor="role">
+              Role <span className="text-destructive">*</span>
+            </Label>
+            <Select value={role} onValueChange={handleRoleChange}>
               <SelectTrigger id="role">
                 <SelectValue />
               </SelectTrigger>
@@ -155,170 +304,163 @@ export function CreateUserDialog({
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
+            <div className="-mt-1">
+              <FieldError name="role" />
+            </div>
           </div>
 
-          {/* Student-Specific Fields */}
-          {formData.role === "student" && (
-            <>
-              <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold mb-3">
-                  Student Information
-                </h4>
-
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="studentId">Student ID</Label>
-                    <Input
-                      id="studentId"
-                      value={formData.studentId || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, studentId: e.target.value })
-                      }
-                      placeholder="e.g., 2024/CS/001"
-                    />
+          {/* ── Student-Specific Fields ── */}
+          {role === "student" && (
+            <div className="border-t pt-6 space-y-5">
+              <h4 className="text-sm font-semibold">Student Information</h4>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="studentId">
+                    Student ID <span className="text-destructive">*</span>
+                  </Label>
+                  <Input id="studentId" {...register("studentId")} />
+                  <div className="-mt-1">
+                    <FieldError name="studentId" />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="matricNumber">Matric Number</Label>
-                    <Input
-                      id="matricNumber"
-                      value={formData.matricNumber || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          matricNumber: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., U2024/3456789"
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="matricNumber">
+                    Matric Number <span className="text-destructive">*</span>
+                  </Label>
+                  <Input id="matricNumber" {...register("matricNumber")} />
+                  <div className="-mt-1">
+                    <FieldError name="matricNumber" />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="major">Major/Program</Label>
-                    <Input
-                      id="major"
-                      value={formData.major || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, major: e.target.value })
-                      }
-                      placeholder="e.g., Computer Science"
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="major">
+                    Major/Program <span className="text-destructive">*</span>
+                  </Label>
+                  <Input id="major" {...register("major")} />
+                  <div className="-mt-1">
+                    <FieldError name="major" />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="level">Level</Label>
-                    <Select
-                      value={formData.level || ""}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, level: value })
-                      }
-                    >
-                      <SelectTrigger id="level">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="100 Level">100 Level</SelectItem>
-                        <SelectItem value="200 Level">200 Level</SelectItem>
-                        <SelectItem value="300 Level">300 Level</SelectItem>
-                        <SelectItem value="400 Level">400 Level</SelectItem>
-                        <SelectItem value="500 Level">500 Level</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="level">
+                    Level <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={watch("level") ?? ""}
+                    onValueChange={(v) =>
+                      setValue("level", v, { shouldValidate: true })
+                    }
+                  >
+                    <SelectTrigger id="level">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        "100 Level",
+                        "200 Level",
+                        "300 Level",
+                        "400 Level",
+                        "500 Level",
+                      ].map((l) => (
+                        <SelectItem key={l} value={l}>
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="-mt-1">
+                    <FieldError name="level" />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="enrollmentYear">Enrollment Year</Label>
-                    <Input
-                      id="enrollmentYear"
-                      type="number"
-                      value={formData.enrollmentYear || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          enrollmentYear: parseInt(e.target.value) || undefined,
-                        })
-                      }
-                      placeholder="e.g., 2024"
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="enrollmentYear">
+                    Enrollment Year <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="enrollmentYear"
+                    type="number"
+                    {...register("enrollmentYear", { valueAsNumber: true })}
+                  />
+                  <div className="-mt-1">
+                    <FieldError name="enrollmentYear" />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="expectedGraduation">
-                      Expected Graduation
-                    </Label>
-                    <Input
-                      id="expectedGraduation"
-                      value={formData.expectedGraduation || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          expectedGraduation: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., 2028"
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="expectedGraduation">
+                    Expected Graduation{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="expectedGraduation"
+                    {...register("expectedGraduation")}
+                  />
+                  <div className="-mt-1">
+                    <FieldError name="expectedGraduation" />
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-          {/* Advisor-Specific Fields */}
-          {formData.role === "advisor" && (
-            <>
-              <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold mb-3">
-                  Advisor Information
-                </h4>
-
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Input
-                      id="department"
-                      value={formData.department || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, department: e.target.value })
-                      }
-                      placeholder="e.g., Computer Science"
-                    />
+          {/* ── Advisor-Specific Fields ── */}
+          {role === "advisor" && (
+            <div className="border-t pt-6 space-y-5">
+              <h4 className="text-sm font-semibold">Advisor Information</h4>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="department">
+                    Department <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="department"
+                    placeholder="e.g., Computer Science"
+                    {...register("department")}
+                  />
+                  <div className="-mt-1">
+                    <FieldError name="department" />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="officeLocation">Office Location</Label>
-                    <Input
-                      id="officeLocation"
-                      value={formData.officeLocation || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          officeLocation: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., Faculty Block B, Room 205"
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="officeLocation">
+                    Office Location <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="officeLocation"
+                    placeholder="e.g., Faculty Block B, Room 205"
+                    {...register("officeLocation")}
+                  />
+                  <div className="-mt-1">
+                    <FieldError name="officeLocation" />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="officeHours">Office Hours</Label>
-                    <Input
-                      id="officeHours"
-                      value={formData.officeHours || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          officeHours: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., Mon-Fri 10:00 AM - 12:00 PM"
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="officeHours">
+                    Office Hours <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="officeHours"
+                    placeholder="e.g., Mon-Fri 10:00 AM - 12:00 PM"
+                    {...register("officeHours")}
+                  />
+                  <div className="-mt-1">
+                    <FieldError name="officeHours" />
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {/* Root / server error */}
+          {errors.root && typeof errors.root.message === "string" && (
+            <p className="text-sm text-destructive">{errors.root.message}</p>
+          )}
 
           <DialogFooter>
             <Button
@@ -328,8 +470,8 @@ export function CreateUserDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create User"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create User"}
             </Button>
           </DialogFooter>
         </form>

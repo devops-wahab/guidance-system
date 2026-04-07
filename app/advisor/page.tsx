@@ -11,13 +11,12 @@ export default async function AdvisorDashboard() {
     <div className="space-y-6 container mx-auto py-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">Advisor Dashboard</h1>
-        <p className="text-muted-foreground">
-          Department:{" "}
-          <span className="font-semibold text-foreground">
+        <p className="text-muted-foreground text-sm">
+          <span className="font-semibold text-foreground/70">
             {profile.department || "Not Assigned"}
           </span>{" "}
-          • Office:{" "}
-          <span className="font-semibold text-foreground">
+          •{" "}
+          <span className="font-semibold text-foreground/70">
             {profile.officeLocation || "Not Assigned"}
           </span>
         </p>

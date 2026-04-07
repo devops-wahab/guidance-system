@@ -8,7 +8,7 @@ const SESSION_COOKIE_NAME = "session";
 const SESSION_EXPIRY_HOURS = 12;
 const SESSION_MAX_AGE = 60 * 60 * SESSION_EXPIRY_HOURS * 1000; // 12 hours in ms
 
-export async function createSessionCookie(idToken: string) {
+export async function createSession(idToken: string) {
   try {
     // Verify the ID token and check auth_time (recent sign-in check)
     const decodedToken = await adminAuth.verifyIdToken(idToken);
@@ -70,7 +70,7 @@ export async function verifySession() {
   }
 }
 
-export async function signOut() {
+export async function deleteSession() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 

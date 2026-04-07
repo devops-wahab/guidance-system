@@ -149,66 +149,36 @@ export async function getAvailableCourses() {
   if (!user?.uid) return [];
 
   try {
+    // Get student profile to determine their level
+    const studentDoc = await adminDb.collection("students").doc(user.uid).get();
+    if (!studentDoc.exists) return [];
+
+    const studentData = studentDoc.data();
+    const studentLevel = studentData?.level || "200 Level";
+
+    // Fetch all courses
     const coursesSnapshot = await adminDb.collection("courses").get();
 
-    if (coursesSnapshot.empty) {
-      // Return mock data if no courses found in DB
-      return [
-        {
-          id: "1",
-          code: "CSC 201",
-          name: "Data Structures",
-          credits: 3,
-          semester: "First",
-          level: "200",
-        },
-        {
-          id: "2",
-          code: "CSC 202",
-          name: "discrete Structure",
-          credits: 3,
-          semester: "First",
-          level: "200",
-        },
-        {
-          id: "3",
-          code: "MTH 201",
-          name: "Mathematical Methods I",
-          credits: 3,
-          semester: "First",
-          level: "200",
-        },
-        {
-          id: "4",
-          code: "GNS 201",
-          name: "Philosophy and Logic",
-          credits: 2,
-          semester: "First",
-          level: "200",
-        },
-        {
-          id: "5",
-          code: "ENT 201",
-          name: "Entrepreneurship Studies I",
-          credits: 2,
-          semester: "First",
-          level: "200",
-        },
-      ];
-    }
+    // Filter courses by student's level
+    const filteredCourses = coursesSnapshot.docs
+      .filter((doc) => {
+        const data = doc.data();
+        return data.level === studentLevel;
+      })
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          code: data.code,
+          name: data.name,
+          credits: data.credits,
+          semester: data.semester,
+          level: data.level,
+          status: "registered", // Default for available courses listing, though not strictly enrolled yet
+        } as EnrolledCourse;
+      });
 
-    return coursesSnapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        code: data.code,
-        name: data.name,
-        credits: data.credits,
-        semester: data.semester,
-        level: data.level,
-        status: "registered", // Default for available courses listing, though not strictly enrolled yet
-      } as EnrolledCourse;
-    });
+    return filteredCourses;
   } catch (error) {
     console.error("Error fetching available courses:", error);
     return [];
@@ -220,6 +190,14 @@ export async function registerCourses(courseIds: string[]) {
   if (!user?.uid) throw new Error("Unauthorized");
 
   try {
+    // Get current session
+    const { getCurrentSession } = await import("./session-utils");
+    const currentSession = await getCurrentSession();
+
+    if (!currentSession) {
+      return { error: "No active academic session found" };
+    }
+
     // Check if student already has an enrollment record
     const enrollmentQuery = await adminDb
       .collection("enrollments")
@@ -239,12 +217,17 @@ export async function registerCourses(courseIds: string[]) {
       await adminDb.collection("enrollments").add({
         studentId: user.uid,
         courses: courseIds,
-        semester: "First", // Defaulting to first for now
-        session: "2025/2026",
+        session: currentSession.name,
+        semester: currentSession.currentSemester,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
     }
+
+    // Update student's isEnrolled status to true
+    await adminDb.collection("students").doc(user.uid).update({
+      isEnrolled: true,
+    });
 
     revalidatePath("/student");
     revalidatePath("/student/registration");
@@ -256,59 +239,120 @@ export async function registerCourses(courseIds: string[]) {
 }
 
 /**
- * Mocks academic history based on current level and GPA
- * In a real app, this would query a 'grades' collection
+ * Fetches academic history from the transcripts collection
  */
 export async function getAcademicHistory() {
-  const profile = await getStudentProfile();
-  const currentGPA = profile.gpa || 0.0;
+  const user = await getCurrentUser();
+  if (!user?.uid) throw new Error("Unauthorized");
 
-  // Mock data generator based on GPA
-  const generateGrades = (level: string, session: string, semester: string) => {
-    const isHighPerformer = currentGPA > 3.0;
+  try {
+    const transcriptsSnapshot = await adminDb
+      .collection("transcripts")
+      .where("studentId", "==", user.uid)
+      .orderBy("createdAt", "desc") // Order by creation time to show chronological progress (recent first)
+      .get();
 
-    // Computer Science 100 Level courses
-    const firstSemesterCourses = [
-      { code: "CSC 101", title: "Introduction to Computer Science", unit: 3 },
-      { code: "MTH 101", title: "Elementary Mathematics I", unit: 3 },
-      { code: "PHY 101", title: "General Physics I", unit: 3 },
-      { code: "CHM 101", title: "General Chemistry I", unit: 3 },
-      { code: "GNS 101", title: "Use of English I", unit: 2 },
-      { code: "GNS 103", title: "Citizenship Education", unit: 2 },
-    ];
+    if (transcriptsSnapshot.empty) {
+      return [];
+    }
 
-    const secondSemesterCourses = [
-      { code: "CSC 102", title: "Introduction to Problem Solving", unit: 3 },
-      { code: "MTH 102", title: "Elementary Mathematics II", unit: 3 },
-      { code: "PHY 102", title: "General Physics II", unit: 3 },
-      { code: "CHM 102", title: "General Chemistry II", unit: 3 },
-      { code: "GNS 102", title: "Use of English II", unit: 2 },
-      { code: "BIO 101", title: "General Biology", unit: 2 },
-    ];
+    const history: AcademicRecord[] = transcriptsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        semester: data.semester,
+        session: data.session,
+        courses: data.courses.map((c: any) => ({
+          code: c.code,
+          title: c.title,
+          unit: c.unit,
+          grade: c.grade,
+          points: c.points,
+        })),
+        gpa: data.gpa,
+        cgpa: data.cgpa,
+        totalUnits: data.totalUnits,
+      };
+    });
 
-    const courses =
-      semester === "First" ? firstSemesterCourses : secondSemesterCourses;
+    return history;
+  } catch (error) {
+    console.error("Error fetching academic history:", error);
+    return [];
+  }
+}
 
-    return {
-      semester,
-      session,
-      courses: courses.map((c) => ({
-        ...c,
-        grade: isHighPerformer ? "A" : "C",
-        points: isHighPerformer ? 5 : 2,
-      })),
-      gpa: currentGPA, // simplified
-      cgpa: currentGPA,
-      totalUnits: courses.reduce((acc, c) => acc + c.unit, 0),
-    };
-  };
+// ==================== HOSTEL ACTIONS ====================
 
-  // Return history - all students have records from 2024/2025 session (last completed session)
-  const history: AcademicRecord[] = [];
+export interface HostelRoom {
+  id: string;
+  block: string;
+  roomNumber: string;
+  gender: "boys" | "girls";
+  capacity: number;
+  occupied: number;
+}
 
-  // All students have completed the 2024/2025 academic session
-  history.push(generateGrades("100 Level", "2024/2025", "First"));
-  history.push(generateGrades("100 Level", "2024/2025", "Second"));
+export async function getHostelRooms(blockId: string) {
+  // In a real app, this would fetch from Firestore 'hostels' collection
+  // For now, we generate 5 rooms for the requested block
+  const gender = blockId.startsWith("boys") ? "boys" : "girls";
+  const blockName = blockId.endsWith("_a") ? "Block A" : "Block B";
 
-  return history;
+  const rooms: HostelRoom[] = [];
+  for (let i = 1; i <= 5; i++) {
+    rooms.push({
+      id: `${blockId}_room_${i}`,
+      block: blockName,
+      roomNumber: `Room ${i}`,
+      gender,
+      capacity: 4,
+      occupied: Math.floor(Math.random() * 4), // Mock occupancy
+    });
+  }
+  return rooms;
+}
+
+export async function bookHostelRoom(roomId: string, paymentRef: string) {
+  const user = await getCurrentUser();
+  if (!user?.uid) throw new Error("Unauthorized");
+
+  try {
+    // Record the booking/allocation
+    await adminDb.collection("hostel_allocations").doc(user.uid).set({
+      studentId: user.uid,
+      roomId,
+      paymentReference: paymentRef,
+      status: "approved",
+      allocatedAt: Timestamp.now(),
+    });
+
+    // Update student profile with hostel status
+    await adminDb.collection("students").doc(user.uid).update({
+      hostelStatus: "allocated",
+      roomId,
+    });
+
+    revalidatePath("/student/hostel");
+    return { success: true };
+  } catch (error) {
+    console.error("Error booking hostel room:", error);
+    return { error: "Failed to book hostel room" };
+  }
+}
+
+export async function getHostelAllocation() {
+  const user = await getCurrentUser();
+  if (!user?.uid) return null;
+
+  try {
+    const doc = await adminDb
+      .collection("hostel_allocations")
+      .doc(user.uid)
+      .get();
+    if (!doc.exists) return null;
+    return doc.data();
+  } catch (error) {
+    console.error("Error fetching hostel allocation:", error);
+    return null;
+  }
 }

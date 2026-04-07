@@ -214,23 +214,23 @@ export async function deleteUser(uid: string) {
   }
 }
 
-export async function assignStudentToAdvisor(
-  studentId: string,
-  advisorId: string,
-) {
-  await verifyAdmin();
+// export async function assignStudentToAdvisor(
+//   studentId: string,
+//   advisorId: string,
+// ) {
+//   await verifyAdmin();
 
-  try {
-    await adminDb.collection("students").doc(studentId).update({
-      advisorId: advisorId,
-    });
+//   try {
+//     await adminDb.collection("students").doc(studentId).update({
+//       advisorId: advisorId,
+//     });
 
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error assigning advisor:", error);
-    return { error: error.message || "Failed to assign advisor" };
-  }
-}
+//     return { success: true };
+//   } catch (error: any) {
+//     console.error("Error assigning advisor:", error);
+//     return { error: error.message || "Failed to assign advisor" };
+//   }
+// }
 
 // ==================== COURSE MANAGEMENT ====================
 

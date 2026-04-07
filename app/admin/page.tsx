@@ -67,11 +67,9 @@ export default async function AdminDashboard() {
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Use the navigation menu to manage users, courses, and view detailed
-            reports.
-          </p>
+        <CardContent className="text-sm text-muted-foreground -mt-5">
+          Use the navigation menu to manage users, courses, and view detailed
+          reports.
         </CardContent>
       </Card>
     </div>

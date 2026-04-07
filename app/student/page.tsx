@@ -1,4 +1,5 @@
 import { getStudentProfile, getEnrolledCourses } from "@/lib/student-actions";
+import { getCurrentSession } from "@/lib/session-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,19 +13,21 @@ import {
   AlertTriangleIcon,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
 
 export default async function StudentDashboard() {
   const profile = await getStudentProfile();
   const enrolledCourses = await getEnrolledCourses();
+  const currentSession = await getCurrentSession();
 
-  const isSummoned = profile.guidanceStatus === "sumoned";
+  const isSummoned = profile.guidanceStatus === "summoned";
 
   return (
-    <div className="space-y-6 container mx-auto py-8">
+    <div className="space-y-6 container mx-auto">
       {/* Welcome Section */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">Welcome, {profile.name}</h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-foreground/70 text-sm">
           {profile.level} • {profile.major} •{" "}
           {profile.matricNumber || "No Matric No"}
         </p>
@@ -72,14 +75,33 @@ export default async function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${profile.gpa && profile.gpa < 2.0 ? "text-destructive" : "text-green-600"}`}
+              className={`text-2xl font-bold ${
+                profile.guidanceStatus === "seen"
+                  ? "text-blue-600"
+                  : profile.guidanceStatus === "summoned"
+                    ? "text-destructive"
+                    : (profile.gpa ?? 0) > 2.0
+                      ? "text-green-600"
+                      : "text-red-600"
+              }`}
             >
-              {profile.gpa && profile.gpa < 2.0 ? "Probation" : "Good Standing"}
+              {profile.guidanceStatus === "seen"
+                ? "Completed"
+                : profile.guidanceStatus === "summoned"
+                  ? "See Advisor"
+                  : (profile.gpa ?? 0) > 2.0
+                    ? "Good Standing"
+                    : "Probation"}
             </div>
+
             <p className="text-xs text-muted-foreground">
-              {profile.gpa && profile.gpa < 2.0
-                ? "See Advisor Immediately"
-                : "Keep it up!"}
+              {profile.guidanceStatus === "seen"
+                ? "Student has completed guidance."
+                : profile.guidanceStatus === "summoned"
+                  ? "Student must see advisor."
+                  : (profile.gpa ?? 0) > 2.0
+                    ? "Student is in good academic standing."
+                    : "Academic performance is below requirement."}
             </p>
           </CardContent>
         </Card>
@@ -105,8 +127,12 @@ export default async function StudentDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2025/2026</div>
-            <p className="text-xs text-muted-foreground">First Semester</p>
+            <div className="text-2xl font-bold">
+              {currentSession?.name || "2025/2026"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {currentSession?.currentSemester || "Second"} Semester
+            </p>
           </CardContent>
         </Card>
 
@@ -127,8 +153,8 @@ export default async function StudentDashboard() {
       </div>
 
       {/* Enrolled Courses List */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
+      <div>
+        <Card>
           <CardHeader>
             <CardTitle>Current Semester Courses</CardTitle>
           </CardHeader>
@@ -161,15 +187,18 @@ export default async function StudentDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center text-center py-8 text-muted-foreground">
                 No courses registered for this semester yet.
+                <Button className="mt-4">
+                  <Link href="/student/registration">Register Courses</Link>
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Quick Actions / Sidebar */}
-        <div className="space-y-6">
+        {/* <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Academic Status</CardTitle>
@@ -178,9 +207,22 @@ export default async function StudentDashboard() {
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Guidance Status</span>
                 {profile.guidanceStatus === "good_standing" ? (
-                  <Badge className="bg-green-500">Good Standing</Badge>
+                  <Badge className="bg-green-600 hover:bg-green-600 text-white border-transparent">
+                    Good Standing
+                  </Badge>
+                ) : profile.guidanceStatus === "summoned" ? (
+                  <Badge className="bg-amber-500 hover:bg-amber-500 text-white border-transparent">
+                    Summoned
+                  </Badge>
+                ) : profile.guidanceStatus === "seen" ||
+                  profile.guidanceStatus === "completed" ? (
+                  <Badge className="bg-blue-600 hover:bg-blue-600 text-white border-transparent">
+                    Guidance Completed
+                  </Badge>
                 ) : (
-                  <Badge variant="destructive">Needs Guidance</Badge>
+                  <Badge className="bg-red-600 hover:bg-red-600 text-white border-transparent">
+                    Needs Guidance
+                  </Badge>
                 )}
               </div>
               <div className="flex justify-between items-center text-sm">
@@ -194,7 +236,7 @@ export default async function StudentDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
     </div>
   );

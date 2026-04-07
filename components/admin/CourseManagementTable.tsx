@@ -32,6 +32,8 @@ export function CourseManagementTable({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
 
   // Filter courses
   const filteredCourses = courses.filter(
@@ -39,6 +41,19 @@ export function CourseManagementTable({
       course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCourses = filteredCourses.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  };
 
   const handleCourseCreated = (newCourse: Course) => {
     setCourses([...courses, newCourse]);
@@ -78,7 +93,7 @@ export function CourseManagementTable({
             <Input
               placeholder="Search by code or name..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
             />
           </div>
@@ -91,31 +106,27 @@ export function CourseManagementTable({
                   <TableHead>Code</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Credits</TableHead>
-                  <TableHead>Category</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCourses.length === 0 ? (
+                {paginatedCourses.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={4}
                       className="text-center text-muted-foreground"
                     >
                       No courses found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredCourses.map((course) => (
+                  paginatedCourses.map((course) => (
                     <TableRow key={course.id}>
                       <TableCell className="font-medium">
                         {course.code}
                       </TableCell>
                       <TableCell>{course.name}</TableCell>
                       <TableCell>{course.credits}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{course.category}</Badge>
-                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -146,6 +157,40 @@ export function CourseManagementTable({
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to{" "}
+                {Math.min(startIndex + itemsPerPage, filteredCourses.length)} of{" "}
+                {filteredCourses.length} courses
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

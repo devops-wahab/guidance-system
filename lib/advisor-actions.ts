@@ -91,14 +91,14 @@ export async function getGuidanceStudents() {
 
 /**
  * Summon a student for guidance
- * Updates status to 'sumoned'
+ * Updates status to 'summoned'
  */
 export async function summonStudent(studentId: string) {
   try {
     const advisor = await getAdvisorProfile();
 
     await adminDb.collection("students").doc(studentId).update({
-      guidanceStatus: "sumoned", // Note: keeping user's terminology 'sumoned'
+      guidanceStatus: "summoned",
       lastSummonedAt: Timestamp.now(),
       summonedByAdvisorId: advisor.uid,
     });
@@ -125,6 +125,12 @@ export async function markStudentAsSeen(studentId: string) {
       guidanceStatus: "seen",
       lastSeenAt: Timestamp.now(),
       seenByAdvisorId: advisor.uid,
+    });
+
+    await adminDb.collection("guidance_sessions").add({
+      advisorId: advisor.uid,
+      studentId: studentId,
+      createdAt: Timestamp.now(),
     });
 
     return { success: true };
